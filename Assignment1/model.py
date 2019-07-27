@@ -1,3 +1,5 @@
+import ast
+
 import nltk
 from nltk.corpus import reuters
 
@@ -14,6 +16,10 @@ EDIT_TYPE_TRANSPOSITION = 3
 
 class SpellingCorrector:
     word_list = []  # splice all the words in the corpus
+    add_mat = {}
+    sub_mat = {}
+    del_mat = {}
+    rev_mat = {}
 
     def __init__(self):
         self.word_list = self.load_corpus("reuters")
@@ -54,8 +60,8 @@ class SpellingCorrector:
         :param str2: string 2
         :return: the Damerau-Levenshtein Edit Distance between str1 and str2
         """
-        str1 = '#' + str1
-        str2 = '#' + str2
+        str1 = '@' + str1
+        str2 = '@' + str2
         len1 = len(str1)
         len2 = len(str2)
         dis = [[0] * len2 for _ in range(len1)]
@@ -125,8 +131,8 @@ class SpellingCorrector:
                     correct = ''
                     error = word[i]  # word[i] is redundant
                     if i == 0:
-                        replacer = '#'
-                        replaced = '#' + error
+                        replacer = '@'
+                        replaced = '@' + error
                     else:
                         replacer = word[i - 1]
                         replaced = word[i - 1] + error
@@ -163,8 +169,8 @@ class SpellingCorrector:
                     correct = ''
                     error = word[i]
                     if i == 0:
-                        replacer = '#'
-                        replaced = '#' + error
+                        replacer = '@'
+                        replaced = '@' + error
                     else:
                         replacer = word[i - 1]
                         replaced = word[i - 1] + error
@@ -196,11 +202,44 @@ class SpellingCorrector:
         elif edit[3]:
             return EDIT_TYPE_TRANSPOSITION, correct, error, replaced, replacer
 
+    def load_data_file(self, file_path):
+        """
+        load data from a file
+        :param file_path: the file path
+        :return: Python data structure
+        """
+        file = open(file_path, 'r')
+        data = file.read()
+        file.close()
+        return ast.literal_eval(data)
+
+    def load_confusion_matrix(self):
+        """
+        load confusion matrix from files
+        the confusion matrix comes from the paper `A Spelling Correction Program Based on a Noisy Channel Model`
+        """
+        self.add_mat = self.load_data_file('confusion_matrix/add.txt')
+        self.sub_mat = self.load_data_file('confusion_matrix/sub.txt')
+        self.del_mat = self.load_data_file('confusion_matrix/del.txt')
+        self.rev_mat = self.load_data_file('confusion_matrix/rev.txt')
+
     def channel_model(self, str1, str2, edit_type):
         corpus = ' '.join(self.word_list)  # use spaces to join all the elements in the list
         if edit == EDIT_TYPE_INSERTION:
+            if str1 == '@':
+                return self.add_mat[str1 + str2] / corpus.count(' ' + str2)
 
-
+        # if edit == 'add':
+        #     if x == '@':
+        #         return self.addmatrix[x + y] / corpus.count(' ' + y)
+        #     else:
+        #         return self.addmatrix[x + y] / corpus.count(x)
+        # if edit == 'sub':
+        #     return self.submatrix[(x + y)[0:2]] / corpus.count(y)
+        # if edit == 'rev':
+        #     return self.revmatrix[x + y] / corpus.count(x + y)
+        # if edit == 'del':
+        #     return self.delmatrix[x + y] / corpus.count(x + y)
 
 
 if __name__ == "__main__":

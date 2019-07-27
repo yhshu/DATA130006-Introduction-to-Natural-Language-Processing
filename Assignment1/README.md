@@ -2,7 +2,7 @@
 
 ## 1. 作业要求
 
-- 需要使用第三章讲义中提到的管道模型和语言模型。
+- 需要使用第三章讲义中提到的信道模型和语言模型。
 - 关于评估，详见 testdata.txt.
 
 ### 1.1 提供的文件
@@ -45,3 +45,13 @@
 - [How to Write a Spelling Corrector by Norvig](
 https://norvig.com/spell-correct.html)
 - https://github.com/jbhoosreddy/spellcorrect
+
+## 3. 混淆矩阵
+
+程序使用的混淆矩阵来自于论文《A Spelling Correction Program Based on a Noisy Channel Model》.
+
+混淆矩阵的数据存储在 `confusion_matrix` 目录下。
+- del[X, Y] = Deletion of Y after X
+- add[X, Y] = Insertion of Y after X
+- sub[X, Y] = Substitution of X (incorrect) for Y (correct)
+- rev[X, Y] = Reversal of XY
