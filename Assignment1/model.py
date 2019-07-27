@@ -224,22 +224,26 @@ class SpellingCorrector:
         self.rev_mat = self.load_data_file('confusion_matrix/rev.txt')
 
     def channel_model(self, str1, str2, edit_type):
+        """
+        Calculate channel model probability for errors
+        :param str1: string 1
+        :param str2: string 2
+        :param edit_type: the edit type including insertion, deletion, substitution and transposition
+        :return:
+        """
         corpus = ' '.join(self.word_list)  # use spaces to join all the elements in the list
-        if edit == EDIT_TYPE_INSERTION:
+        string = str1 + str2
+        if edit_type == EDIT_TYPE_INSERTION:
             if str1 == '@':
-                return self.add_mat[str1 + str2] / corpus.count(' ' + str2)
-
-        # if edit == 'add':
-        #     if x == '@':
-        #         return self.addmatrix[x + y] / corpus.count(' ' + y)
-        #     else:
-        #         return self.addmatrix[x + y] / corpus.count(x)
-        # if edit == 'sub':
-        #     return self.submatrix[(x + y)[0:2]] / corpus.count(y)
-        # if edit == 'rev':
-        #     return self.revmatrix[x + y] / corpus.count(x + y)
-        # if edit == 'del':
-        #     return self.delmatrix[x + y] / corpus.count(x + y)
+                return self.add_mat[string] / corpus.count(' ' + str2)
+            else:
+                return self.add_mat[string] / corpus.count(str1)
+        if edit_type == EDIT_TYPE_DELETION:
+            return self.del_mat[string] / corpus.count(string)
+        if edit_type == EDIT_TYPE_SUBSTITUTION:
+            return self.sub_mat[string] / corpus.count(string)
+        if edit_type == EDIT_TYPE_TRANSPOSITION:
+            return self.rev_mat[string] / corpus.count(string)
 
 
 if __name__ == "__main__":
@@ -267,17 +271,49 @@ if __name__ == "__main__":
                 test_data_line_correct = test_data_line_correct + word + ' '
                 continue
 
+            NP = dict()
+            P = dict()
+
             for candidate_item in word_candidates:
                 edit = spelling_corrector.edit_type(candidate_item, word)
                 if edit is None:
                     continue
-                # if edit[0] == "Insertion":
-                #     NP[item] = sc.channelModel(edit[3][0], edit[3][1], 'add')
-                # if edit[0] == 'Deletion':
-                #     NP[item] = sc.channelModel(edit[4][0], edit[4][1], 'del')
-                # if edit[0] == 'Reversal':
-                #     NP[item] = sc.channelModel(edit[4][0], edit[4][1], 'rev')
-                # if edit[0] == 'Substitution':
-                #     NP[item] = sc.channelModel(edit[3], edit[4], 'sub')
+                if edit[0] == EDIT_TYPE_INSERTION:
+                    NP[candidate_item] = spelling_corrector.channel_model(str1=edit[3][0], str2=edit[3][1],
+                                                                          edit_type=EDIT_TYPE_INSERTION)
+                if edit[0] == EDIT_TYPE_DELETION:
+                    NP[candidate_item] = spelling_corrector.channel_model(str1=edit[4][0], str2=edit[4][1],
+                                                                          edit_type=EDIT_TYPE_DELETION)
+                if edit[0] == EDIT_TYPE_TRANSPOSITION:
+                    NP[candidate_item] = spelling_corrector.channel_model(str1=edit[4][0], str2=edit[4][1],
+                                                                          edit_type=EDIT_TYPE_TRANSPOSITION)
+                if edit[0] == EDIT_TYPE_SUBSTITUTION:
+                    NP[candidate_item] = spelling_corrector.channel_model(str1=edit[3], str2=edit[4],
+                                                                          edit_type=EDIT_TYPE_SUBSTITUTION)
+
+            for item in NP:
+                channel = NP[item]
+                if len(line_test_sentence) - 1 != word_index:  # not the end of this sentence
+
+
+            #     for item in NP:
+            #         channel = NP[item]
+            #         if len(sentence) - 1 != index:
+            #             bigram = calc.pow(calc.e,
+            #                               sc.ng.sentenceprobability(sentence[index - 1] + item + sentence[index + 1],
+            #                                                         'bi',
+            #                                                         'antilog'))
+            #         else:
+            #             bigram = calc.pow(calc.e,
+            #                               sc.ng.sentenceprobability(sentence[index - 1] + item, 'bi', 'antilog'))
+            #         # print channel, ": ", unigram
+            #         P[item] = channel * bigram * calc.pow(10, 9)
+            #     P = sorted(P, key=P.get, reverse=True)
+            #     if P == []:
+            #         P.append('')
+            #     correct = correct + P[0] + ' '
+            #
+            # print
+            # 'Response: ' + correct
 
     print("Spelling Correction ends")
