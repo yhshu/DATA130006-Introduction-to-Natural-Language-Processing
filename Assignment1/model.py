@@ -16,14 +16,32 @@ EDIT_TYPE_TRANSPOSITION = 3
 
 
 class SpellingCorrector:
+    # member fields
+
     word_list = []  # splice all the words in the corpus
+
+    # confusion matrix
     add_mat = {}
     sub_mat = {}
     del_mat = {}
     rev_mat = {}
 
+    # n-gram count
+    unigram = {}
+    bigram = {}
+    trigram = {}
+    four_gram = {}
+    five_gram = {}
+
     def __init__(self):
-        self.word_list = self.load_corpus("reuters")
+        self.word_list = self.load_corpus("reuters")  # load the corpus to create the word list
+
+        # count the n-grams
+        self.unigram = self.count_unigram(self.word_list)
+        self.bigram = self.count_bigram(self.word_list)
+        self.trigram = self.count_trigram(self.word_list)
+        self.four_gram = self.count_four_gram(self.word_list)
+        self.five_gram = self.count_five_gram(self.word_list)
 
     def load_corpus(self, corpus_name):
         if corpus_name == "reuters":
@@ -283,12 +301,67 @@ class SpellingCorrector:
                 word_list[i + 4])
         return Counter(five_gram)
 
+    def n_gram_MLE(self, word, words, gram_type=1):
+        """
+        Calculate the Maximum Likelihood Probability of n-grams with Laplace smoothing
+
+        Reference:
+        - http://lintool.github.io/UMD-courses/CMSC723-2009-Fall/session9-slides.pdf
+        """
+
+        if gram_type == 1:
+            return math.log((self.unigram[word] + 1) / (len(self.word_list) + len(self.unigram)))
+        elif gram_type == 2:
+            return math.log(self.bigram[words] + 1) / (self.unigram[word] + len(self.unigram))
+        elif gram_type == 3:
+            return math.log(self.trigram[words] + 1) / (self.bigram[word] + len(self.unigram))
+        elif gram_type == 4:
+            return math.log(self.four_gram[words] + 1) / (self.trigram[word] + len(self.unigram))
+        elif gram_type == 5:
+            return math.log(self.five_gram[words] + 1) / (self.four_gram[word] + len(self.unigram))
+
     def sentence_probability(self, sentence, ngram_type=1):
         sentence_word_list = sentence.lower().split()
         prob = 0  # sentence probability
         if ngram_type == 1:
-            for index, item in enumerate(sentence_word_list):
-                prob = prob +
+            for i in range(len(sentence_word_list)):
+                prob = prob + self.sentence_probability(sentence_word_list[i])
+
+        if ngram_type == 2:
+            for i in range(len(sentence_word_list)):
+                if i >= len(sentence_word_list) - 1:
+                    break
+                prob = prob + self.n_gram_MLE(sentence_word_list[i],
+                                              sentence_word_list[i] + " " + sentence_word_list[i + 1], 2)
+
+        if ngram_type == 3:
+            for i in range(len(sentence_word_list)):
+                if i >= len(sentence_word_list) - 2:
+                    break
+                prob = prob + self.n_gram_MLE(sentence_word_list[i] + ' ' + sentence_word_list[i + 1],
+                                              sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
+                                              sentence_word_list[i + 2], 3)
+
+        if ngram_type == 4:
+            for i in range(len(sentence_word_list)):
+                if i >= len(sentence_word_list) - 3:
+                    break
+                prob = prob + self.n_gram_MLE(sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
+                                              sentence_word_list[i + 2],
+                                              sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
+                                              sentence_word_list[i + 2] + sentence_word_list[i + 3], 4)
+
+        if ngram_type == 5:
+            for i in range(len(sentence_word_list)):
+                if i >= len(sentence_word_list) - 4:
+                    break
+                prob = prob + self.n_gram_MLE(sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
+                                              sentence_word_list[i + 2] + sentence_word_list[i + 3],
+                                              sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
+                                              sentence_word_list[i + 2] + sentence_word_list[i + 3] +
+                                              sentence_word_list[i + 4], 5)
+
+        return prob
 
 
 if __name__ == "__main__":
@@ -339,7 +412,7 @@ if __name__ == "__main__":
             for item in NP:
                 channel = NP[item]
                 if len(line_test_sentence) - 1 != word_index:  # not the end of this sentence
-                    bigram = math.pow(math.e, )
+                    bigram = math.pow(math.e, spelling_corrector.sentence_probability())
 
             #     for item in NP:
             #         channel = NP[item]

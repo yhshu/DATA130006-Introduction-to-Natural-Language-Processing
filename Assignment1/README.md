@@ -55,3 +55,6 @@ https://norvig.com/spell-correct.html)
 - add[X, Y] = Insertion of Y after X
 - sub[X, Y] = Substitution of X (incorrect) for Y (correct)
 - rev[X, Y] = Reversal of XY
+
+## 4. ngram 语言模型
+
