@@ -1,7 +1,8 @@
 import ast
-
+import math
 import nltk
 from nltk.corpus import reuters
+from collections import Counter
 
 # file path
 test_data_path = 'testdata.txt'
@@ -245,6 +246,50 @@ class SpellingCorrector:
         if edit_type == EDIT_TYPE_TRANSPOSITION:
             return self.rev_mat[string] / corpus.count(string)
 
+    def count_unigram(self, word_list):
+        return Counter(word_list)
+
+    def count_bigram(self, word_list):
+        bigram = []
+        for i in range(len(word_list)):
+            if i >= len(word_list) - 1:  # the last one
+                break
+            bigram.append(word_list[i] + " " + word_list[i + 1])
+        return Counter(bigram)
+
+    def count_trigram(self, word_list):
+        trigram = []
+        for i in range(len(word_list)):
+            if i >= len(word_list) - 2:
+                break
+            trigram.append(word_list[i] + " " + word_list[i + 1] + " " + word_list[i + 2])
+        return Counter(trigram)
+
+    def count_four_gram(self, word_list):
+        four_gram = []
+        for i in range(len(word_list)):
+            if i >= len(word_list) - 3:
+                break
+            four_gram.append(word_list[i] + " " + word_list[i + 1] + " " + word_list[i + 2] + " " + word_list[i + 3])
+        return Counter(four_gram)
+
+    def count_five_gram(self, word_list):
+        five_gram = []
+        for i in range(len(word_list)):
+            if i >= len(word_list) - 4:
+                break
+            five_gram.append(
+                word_list[i] + " " + word_list[i + 1] + " " + word_list[i + 2] + " " + word_list[i + 3] + " " +
+                word_list[i + 4])
+        return Counter(five_gram)
+
+    def sentence_probability(self, sentence, ngram_type=1):
+        sentence_word_list = sentence.lower().split()
+        prob = 0  # sentence probability
+        if ngram_type == 1:
+            for index, item in enumerate(sentence_word_list):
+                prob = prob +
+
 
 if __name__ == "__main__":
     """
@@ -294,7 +339,7 @@ if __name__ == "__main__":
             for item in NP:
                 channel = NP[item]
                 if len(line_test_sentence) - 1 != word_index:  # not the end of this sentence
-
+                    bigram = math.pow(math.e, )
 
             #     for item in NP:
             #         channel = NP[item]
