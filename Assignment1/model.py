@@ -34,14 +34,12 @@ class SpellingCorrector:
     five_gram = {}
 
     def __init__(self):
-        self.word_list = self.load_corpus("reuters")  # load the corpus to create the word list
+        self.word_list = self.load_corpus("reuters")
+        # load the corpus to create the word list
+        # note that the network is needed to download the corpus
 
-        # count the n-grams
-        self.unigram = self.count_unigram(self.word_list)
-        self.bigram = self.count_bigram(self.word_list)
-        self.trigram = self.count_trigram(self.word_list)
-        self.four_gram = self.count_four_gram(self.word_list)
-        self.five_gram = self.count_five_gram(self.word_list)
+        self.count_ngrams()  # count the n-grams
+        self.load_confusion_matrix()  # read the confusion matrix from files
 
     def load_corpus(self, corpus_name):
         if corpus_name == "reuters":
@@ -241,6 +239,12 @@ class SpellingCorrector:
         self.sub_mat = self.load_data_file('confusion_matrix/sub.txt')
         self.del_mat = self.load_data_file('confusion_matrix/del.txt')
         self.rev_mat = self.load_data_file('confusion_matrix/rev.txt')
+        print(
+            "[INFO] Load confusion matrix completed: \n" +
+            "[INFO] confusion matrix add_mat: " + str(self.add_mat) + "\n" +
+            "[INFO] confusion matrix sub_mat: " + str(self.sub_mat) + "\n" +
+            "[INFO] confusion matrix del_mat: " + str(self.del_mat) + "\n" +
+            "[INFO] confusion matrix rev_mat: " + str(self.rev_mat))
 
     def channel_model(self, str1, str2, edit_type):
         """
@@ -263,6 +267,13 @@ class SpellingCorrector:
             return self.sub_mat[string] / corpus.count(string)
         if edit_type == EDIT_TYPE_TRANSPOSITION:
             return self.rev_mat[string] / corpus.count(string)
+
+    def count_ngrams(self):
+        self.unigram = self.count_unigram(self.word_list)
+        self.bigram = self.count_bigram(self.word_list)
+        self.trigram = self.count_trigram(self.word_list)
+        self.four_gram = self.count_four_gram(self.word_list)
+        self.five_gram = self.count_five_gram(self.word_list)
 
     def count_unigram(self, word_list):
         return Counter(word_list)
@@ -371,26 +382,35 @@ if __name__ == "__main__":
     - Output file：the corrected result file is stored in <result_file_path>
     """
 
-    print("Spelling Correction starts...")
+    print("[INFO] Spelling Correction starts...")
 
     spelling_corrector = SpellingCorrector()
 
+    print("[INFO] Reading the test data...")
     test_data_file = open(test_data_path, 'r')
     test_data_lines = test_data_file.readlines()
-    for test_data_line in test_data_lines:  # for each line of the test data
-        line_sentence_id = test_data_line[0]  # sentence id
-        line_n_error = test_data_line[1]  # the error number in this sentence
-        line_test_sentence = test_data_line[2].lower()  # convert the original sentence to lowercase
-        test_data_line_correct = ""  # The sentence after the correction
 
-        for word_index, word in enumerate(line_test_sentence):  # for each word in the original sentence
+    for test_data_line in test_data_lines:  # for each line of the test data
+        test_data_line = test_data_line.split("\t")  # split the test_data_line according to the metadata
+        sentence_id = test_data_line[0]  # sentence id
+        n_error = test_data_line[1]  # the error number in this sentence
+        sentence = test_data_line[2].lower()  # convert the original sentence to lowercase
+        sentence = sentence.split(" ")  # split words in one sentence
+        # There may be an empty element in the sentence list, and the last element may contain a period and "\n"
+        sentence = [word for word in sentence if word != '']  # remove empty string in the sentence list
+        # remove the "\n"
+        for i in range(len(sentence)):
+            sentence[i] = sentence[i].strip("\n")
+        corrected_sentence = ""  # The sentence after the correction
+
+        for word_i, word in enumerate(sentence):  # for each word in the original sentence
             word_candidates = spelling_corrector.get_candidates(word)  # get a candidate set for the word
             if word in word_candidates:
-                test_data_line_correct = test_data_line_correct + word + ' '
+                corrected_sentence = corrected_sentence + word + ' '
                 continue
 
-            NP = dict()
-            P = dict()
+            NP = dict()  # todo ?
+            P = dict()  # todo ?
 
             for candidate_item in word_candidates:
                 edit = spelling_corrector.edit_type(candidate_item, word)
@@ -411,27 +431,21 @@ if __name__ == "__main__":
 
             for item in NP:
                 channel = NP[item]
-                if len(line_test_sentence) - 1 != word_index:  # not the end of this sentence
-                    bigram = math.pow(math.e, spelling_corrector.sentence_probability())
+                if len(sentence) - 1 != word_i:  # not the end of this sentence
+                    bigram = math.pow(math.e,
+                                      spelling_corrector.sentence_probability(
+                                          sentence=sentence[word_i - 1] + item + sentence[word_i + 1],
+                                          ngram_type=2))
+                else:
+                    bigram = math.pow(math.e, spelling_corrector.sentence_probability(sentence[word_i - 1], 2))
 
-            #     for item in NP:
-            #         channel = NP[item]
-            #         if len(sentence) - 1 != index:
-            #             bigram = calc.pow(calc.e,
-            #                               sc.ng.sentenceprobability(sentence[index - 1] + item + sentence[index + 1],
-            #                                                         'bi',
-            #                                                         'antilog'))
-            #         else:
-            #             bigram = calc.pow(calc.e,
-            #                               sc.ng.sentenceprobability(sentence[index - 1] + item, 'bi', 'antilog'))
-            #         # print channel, ": ", unigram
-            #         P[item] = channel * bigram * calc.pow(10, 9)
-            #     P = sorted(P, key=P.get, reverse=True)
-            #     if P == []:
-            #         P.append('')
-            #     correct = correct + P[0] + ' '
-            #
-            # print
-            # 'Response: ' + correct
+                P[item] = channel * bigram * math.pow(10, 9)
+            P = sorted(P, key=P.get, reverse=True)
+            if not P:  # if P == []
+                P.append("")
+            corrected_sentence = corrected_sentence + str(P[0]) + " "
+        print("[INFO] original sentence: " + str(sentence))
+        print("[INFO] corrected sentence: " + corrected_sentence)
+        # After the model calculates the corrected sentence, the evaluation procedure needs to match the results
 
     print("Spelling Correction ends")
