@@ -5,8 +5,9 @@ from nltk.corpus import reuters
 from collections import Counter
 
 # file path
-test_data_path = 'testdata.txt'
-result_file_path = 'result.txt'
+test_data_path = "testdata.txt"
+result_file_path = "result.txt"
+vocabulary_path = "vocab.txt"
 
 # constants
 EDIT_TYPE_INSERTION = 0
@@ -65,6 +66,14 @@ class SpellingCorrector:
             word_list.extend(file_word_lowercase)
         print("[INFO] Load Reuters corpus completed")
         return word_list
+
+    def load_vocabulary(self):
+        """
+        load the vocabulary from file
+        :return: vocabulary list
+        """
+
+
 
     def edit_distance(self, str1, str2):
         """
