@@ -2,10 +2,10 @@ import ast
 import math
 from collections import Counter
 
-import Levenshtein
 import nltk
 # THE CONSTANTS
 from nltk.corpus import reuters
+from pyxdameraulevenshtein import damerau_levenshtein_distance
 
 from util import rchop, lchop, legal_number
 
@@ -101,7 +101,7 @@ class SpellingCorrector:
         """
         candidates = dict()
         for word_list_item in self.word_list:
-            edit_distance = Levenshtein.distance(word, word_list_item)
+            edit_distance = damerau_levenshtein_distance(word, word_list_item)
             if edit_distance <= 1:
                 candidates[word_list_item] = edit_distance
         return sorted(candidates, key=candidates.get, reverse=False)
@@ -378,7 +378,7 @@ class SpellingCorrector:
     def word_clean(self, word):
         word_ori = word
         if word not in self.vocab_list:  # if the word is not in the vocabulary
-            word = word.strip(",.")  # delete punctuation, such as periods, commas
+            word = word.strip(",.!?")  # delete punctuation, such as periods, commas
         for i in range(len(suffix_list)):
             (match, string) = rchop(word, suffix_list[i])
             if match:
@@ -432,7 +432,9 @@ def sentence_spelling_correction(test_data_line):
         prob_dict = dict()
 
         for candidate_item in word_candidates:
+
             edit = spelling_corrector.edit_type(candidate_item, word_cleaned)
+
             if edit is None:
                 continue
             if edit[0] == EDIT_TYPE_INSERTION:
@@ -503,6 +505,6 @@ if __name__ == "__main__":
         sentence_id = sentence_id + 1
         res = sentence_spelling_correction(test_data_line)
         match_count = match_count + res
-        print("Accuracy is : %.4f%%" % (match_count * 100.00 / sentence_id))
+        print("Accuracy is: %.4f%%" % (match_count * 100.00 / sentence_id))
 
     print("[INFO] Spelling Correction ends")

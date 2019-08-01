@@ -61,3 +61,10 @@ https://norvig.com/spell-correct.html)
 使用拉普拉斯平滑的 ngram 极大似然估计，参考：
 - http://lintool.github.io/UMD-courses/CMSC723-2009-Fall/session9-slides.pdf
 
+## 5. 编辑距离
+
+编写在仓库根目录的 util.py 文件中。参考：
+- [Levenshtein 距离](https://en.wikipedia.org/wiki/Levenshtein_distance)
+- [python-Levenshtein documentation](https://rawgit.com/ztane/python-Levenshtein/master/docs/Levenshtein.html)
+- [pyxDamerauLevenshtein](https://pypi.org/project/pyxDamerauLevenshtein/)
+- [Damerau-Levenshtein 距离](https://en.wikipedia.org/wiki/Damerau–Levenshtein_distance)

@@ -1,3 +1,6 @@
+import Levenshtein
+
+
 def edit_distance(str1, str2, m, n):
     """
     A Naive recursive Python program to find minimum number operations to convert str1 to str2
@@ -32,7 +35,7 @@ def edit_distance(str1, str2, m, n):
                    )
 
 
-def Damerau_Levenshtein_edit_distance(str1, str2):
+def _Damerau_Levenshtein_edit_distance(str1, str2):
     """
     Calculate Damerau-Levenshtein Edit Distance for two string
 
@@ -74,6 +77,7 @@ def Damerau_Levenshtein_edit_distance(str1, str2):
     return dis[len1 - 1][len2 - 1]
 
 
-def Levenshtein_distance(str1, str2):
-    # todo
+def Damerau_Levenshtein_edit_distance(str1, str2):
+    if len(str1) == len(str2) and Levenshtein.hamming(str1, str2) == 2:
+        return _Damerau_Levenshtein_edit_distance(str1, str2)
     return Levenshtein.distance(str1, str2)  # insertion, deletion, substitution
