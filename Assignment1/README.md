@@ -22,7 +22,7 @@
     - 运行时，确保“ans.txt”和“result.txt”与“eval.py”位于同一目录中。
     - 可能包含一些错误。如果找到，请发邮件联系。
 如果您找到，请给我们发电子邮件！
-- LM
+- 语言模型（LM）
     - SRILM 的编译文件。
 
 ### 1.2 提交
@@ -46,7 +46,7 @@
 https://norvig.com/spell-correct.html)
 - https://github.com/jbhoosreddy/spellcorrect
 
-## 3. 混淆矩阵
+## 3. 混淆矩阵 Confusion Matrix
 
 程序使用的混淆矩阵来自于论文《A Spelling Correction Program Based on a Noisy Channel Model》.
 
@@ -57,4 +57,7 @@ https://norvig.com/spell-correct.html)
 - rev[X, Y] = Reversal of XY
 
 ## 4. ngram 语言模型
+
+使用拉普拉斯平滑的 ngram 极大似然估计，参考：
+- http://lintool.github.io/UMD-courses/CMSC723-2009-Fall/session9-slides.pdf
 
