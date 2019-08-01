@@ -2,15 +2,16 @@ import ast
 import math
 from collections import Counter
 
+import Levenshtein
 import nltk
 # THE CONSTANTS
 from nltk.corpus import reuters
 
-from util import rchop, lchop
+from util import rchop, lchop, legal_number
 
 download_needed = False  # default: True, when the corpus is used for the first time, downloading is necessary.
 
-suffix_list = ["'d", "'flight", "'ll", "'re", "'s", "'ve"]
+suffix_list = ["'", "'d", "'flight", "'ll", "'re", "'s", "'ve"]
 
 # file path
 test_data_path = "testdata.txt"
@@ -92,77 +93,6 @@ class SpellingCorrector:
         print("[INFO] Reading vocabulary...")
         print(self.vocab_list[0:15])
 
-    def edit_distance(self, str1, str2, m, n):
-        """
-        A Naive recursive Python program to find minimum number operations to convert str1 to str2
-        """
-
-        # If first string is empty, the only option is to
-        # insert all characters of second string into first
-        if m == 0:
-            return n
-
-            # If second string is empty, the only option is to
-        # remove all characters of first string
-        if n == 0:
-            return m
-
-            # If last characters of two strings are same, nothing
-        # much to do. Ignore last characters and get count for
-        # remaining strings.
-        if str1[m - 1] == str2[n - 1]:
-            return self.edit_distance(str1, str2, m - 1, n - 1)
-
-            # If last characters are not same, consider all three
-        # operations on last character of first string, recursively
-        # compute minimum cost for all three operations and take
-        # minimum of three values.
-        return 1 + min(self.edit_distance(str1, str2, m, n - 1),  # Insert
-                       self.edit_distance(str1, str2, m - 1, n),  # Remove
-                       self.edit_distance(str1, str2, m - 1, n - 1)  # Replace
-                       )
-
-    def Damerau_Levenshtein_edit_distance(self, str1, str2):
-        """
-        Calculate Damerau-Levenshtein Edit Distance for two string
-
-        Reference:
-        https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
-
-        :param str1: string 1
-        :param str2: string 2
-        :return: the Damerau-Levenshtein Edit Distance between str1 and str2
-        """
-        str1 = '@' + str1
-        str2 = '@' + str2
-        len1 = len(str1)
-        len2 = len(str2)
-        dis = [[0] * len2 for _ in range(len1)]
-        for i in range(len1):
-            for j in range(len2):
-                dis[i][0] = i
-                dis[0][j] = j
-
-        for i in range(len1):
-            for j in range(len2):
-                if i == 0 or j == 0:
-                    continue  # dis[0][0] = 0
-
-                t = [0] * 4
-                t[0] = dis[i - 1][j] + 1
-                t[1] = dis[i][j - 1] + 1
-                if str1[i] != str2[j]:
-                    t[2] = dis[i - 1][j - 1] + 1
-                else:
-                    t[2] = dis[i - 1][j - 1]
-                if str1[i] == str2[j - 1] and str1[i - 1] == str2[j]:  # transposition of two adjacent characters
-                    t[3] = dis[i - 1][j - 1] - 1
-                if t[3] != 0:
-                    dis[i][j] = min(t[0:4])
-                else:
-                    dis[i][j] = min(t[0:3])
-        return dis[len1 - 1][len2 - 1]
-
     def get_candidates(self, word):
         """
         Damerau-Levenshtein edit distance is used to generate a candidate set of this word.
@@ -171,7 +101,7 @@ class SpellingCorrector:
         """
         candidates = dict()
         for word_list_item in self.word_list:
-            edit_distance = self.Damerau_Levenshtein_edit_distance(word, word_list_item)
+            edit_distance = Levenshtein.distance(word, word_list_item)
             if edit_distance <= 1:
                 candidates[word_list_item] = edit_distance
         return sorted(candidates, key=candidates.get, reverse=False)
@@ -312,14 +242,14 @@ class SpellingCorrector:
         string = str1.lower() + str2.lower()
         if edit_type == EDIT_TYPE_INSERTION:
             if str1 == "@":
-                if corpus.count(" " + str2):
+                if corpus.count(" " + str2) == 0:
                     return 0
                 return self.add_mat[string] / corpus.count(" " + str2)
             else:
-                if corpus.count(str1):
+                if corpus.count(str1) == 0:
                     return 0
                 return self.add_mat[string] / corpus.count(str1)
-        if corpus.count(string):
+        if corpus.count(string) == 0:
             return 0
         if edit_type == EDIT_TYPE_DELETION:
             return self.del_mat[string] / corpus.count(string)
@@ -451,8 +381,8 @@ class SpellingCorrector:
             word = word.strip(",.")  # delete punctuation, such as periods, commas
         for i in range(len(suffix_list)):
             (match, string) = rchop(word, suffix_list[i])
-            (_, suffix) = lchop(word_ori, word)
             if match:
+                (_, suffix) = lchop(word_ori, word)
                 return string, suffix
 
         (_, suffix) = lchop(word_ori, word)
@@ -494,7 +424,7 @@ def sentence_spelling_correction(test_data_line):
         # it's non-word error or real word error
         word_cleaned, word_suffix = spelling_corrector.word_clean(word)
         word_candidates = spelling_corrector.get_candidates(word_cleaned)  # get a candidate set for the word
-        if word_cleaned in word_candidates:
+        if word_cleaned in word_candidates or legal_number(word_cleaned):
             result_sentence = result_sentence + word + ' '
             continue
 
