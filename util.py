@@ -3,7 +3,7 @@ def rchop(string, substring):
 
 
 def lchop(string, substring):
-    return (True, string[:-len(substring)]) if string.startswith(substring) else (False, string)
+    return (True, string[len(substring):]) if string.startswith(substring) else (False, string)
 
 
 def legal_number(string):

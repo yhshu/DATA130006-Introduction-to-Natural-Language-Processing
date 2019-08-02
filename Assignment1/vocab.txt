@@ -3328,6 +3328,7 @@ Campobello
 Campus
 Camusfearna
 Can
+Can't
 Canada
 Canadian
 Canadians
@@ -19886,6 +19887,7 @@ campus
 campuses
 cams
 can
+can't
 canals
 cancel
 canceled

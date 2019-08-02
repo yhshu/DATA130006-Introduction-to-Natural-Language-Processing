@@ -1,16 +1,14 @@
 import ast
 import math
 from collections import Counter
-
 import nltk
-# THE CONSTANTS
-from nltk.corpus import reuters
 from pyxdameraulevenshtein import damerau_levenshtein_distance
 
+from Assignment1.corpus import load_reuters_corpus, load_gutenberg_corpus, load_brown_corpus
 from util import rchop, lchop, legal_number
 
-download_needed = False  # default: True, when the corpus is used for the first time, downloading is necessary.
 
+# THE CONSTANTS
 suffix_list = ["'", "'d", "'flight", "'ll", "'re", "'s", "'ve"]
 
 # file path
@@ -45,7 +43,8 @@ class SpellingCorrector:
     five_gram = {}
 
     def __init__(self):
-        self.word_list = self.load_corpus("reuters")
+        self.word_list.extend(self.load_corpus("reuters"))
+        self.corpus = " ".join(self.word_list)  # use spaces to join all the elements in the list
         # load the corpus to create the word list
         # note that the network is needed to download the corpus
 
@@ -55,33 +54,11 @@ class SpellingCorrector:
 
     def load_corpus(self, corpus_name):
         if corpus_name == "reuters":
-            return self.load_reuters_corpus()
-
-    def load_reuters_corpus(self):
-        """
-        Get Reuters Corpus from nltk package
-        :returns a list of words to splicing all the files in the corpus
-        """
-
-        if download_needed:
-            nltk.download('reuters')
-        else:
-            print(
-                "[INFO] The local corpus is used, if you have not already downloaded the corpus, set the download_needed = True after connecting to the Internet")
-        reuters_fileids = reuters.fileids()
-        print("[INFO] The length of reuters corpus is " + str(len(reuters_fileids)))
-        reuters_categories = reuters.categories()
-        print("[INFO] The length of reuters categories is " + str(len(reuters_categories)))
-        print("[INFO] Checking if the corpus file has been obtained...")
-        print(reuters_fileids[0:5])  # check if the files has been downloaded
-
-        word_list = []
-        for file_id in reuters_fileids:
-            file_word = nltk.corpus.reuters.words(file_id)  # words in this file
-            file_word_lowercase = [w.lower() for w in file_word]  # convert words to lowercase
-            word_list.extend(file_word_lowercase)
-        print("[INFO] Load Reuters corpus completed")
-        return word_list
+            return load_reuters_corpus()
+        if corpus_name == "gutenberg":
+            return load_gutenberg_corpus()
+        if corpus_name == "brown":
+            return load_brown_corpus()
 
     def load_vocabulary(self):
         """
@@ -100,7 +77,7 @@ class SpellingCorrector:
         :return: the candidate set of this word
         """
         candidates = dict()
-        for word_list_item in self.word_list:
+        for word_list_item in self.vocab_list:
             edit_distance = damerau_levenshtein_distance(word, word_list_item)
             if edit_distance <= 1:
                 candidates[word_list_item] = edit_distance
@@ -238,25 +215,24 @@ class SpellingCorrector:
         :param edit_type: the edit type including insertion, deletion, substitution and transposition
         :return:
         """
-        corpus = " ".join(self.word_list)  # use spaces to join all the elements in the list
         string = str1.lower() + str2.lower()
         if edit_type == EDIT_TYPE_INSERTION:
             if str1 == "@":
-                if corpus.count(" " + str2) == 0:
+                if self.corpus.count(" " + str2) == 0:
                     return 0
-                return self.add_mat[string] / corpus.count(" " + str2)
+                return self.add_mat[string] / self.corpus.count(" " + str2)
             else:
-                if corpus.count(str1) == 0:
+                if self.corpus.count(str1) == 0:
                     return 0
-                return self.add_mat[string] / corpus.count(str1)
-        if corpus.count(string) == 0:
+                return self.add_mat[string] / self.corpus.count(str1)
+        if self.corpus.count(string) == 0:
             return 0
         if edit_type == EDIT_TYPE_DELETION:
-            return self.del_mat[string] / corpus.count(string)
+            return self.del_mat[string] / self.corpus.count(string)
         if edit_type == EDIT_TYPE_SUBSTITUTION:
-            return self.sub_mat[string] / corpus.count(string)
+            return self.sub_mat[string] / self.corpus.count(string)
         if edit_type == EDIT_TYPE_TRANSPOSITION:
-            return self.rev_mat[string] / corpus.count(string)
+            return self.rev_mat[string] / self.corpus.count(string)
 
     def count_ngrams(self):
         self.unigram = self.count_unigram(self.word_list)
@@ -304,7 +280,7 @@ class SpellingCorrector:
 
     def n_gram_MLE(self, word, words, gram_type=1):
         """
-        Calculate the Maximum Likelihood Probability of n-grams with Laplace smoothing
+        Calculate the Maximum Likelihood Probability of n-grams with add-one smoothing
 
         Reference:
         - http://lintool.github.io/UMD-courses/CMSC723-2009-Fall/session9-slides.pdf
@@ -382,7 +358,7 @@ class SpellingCorrector:
         for i in range(len(suffix_list)):
             (match, string) = rchop(word, suffix_list[i])
             if match:
-                (_, suffix) = lchop(word_ori, word)
+                (_, suffix) = lchop(word_ori, string)
                 return string, suffix
 
         (_, suffix) = lchop(word_ori, word)
@@ -404,7 +380,6 @@ def sentence_spelling_correction(test_data_line):
     n_non_word_error = 0  # count the number of non-word errors
     non_word_index_list = []
     for word_i, word in enumerate(sentence):
-        # note that comparing original sentence (with uppercase) with the vocabulary
         if word not in spelling_corrector.vocab_list and \
                 spelling_corrector.word_clean(word)[0] not in spelling_corrector.vocab_list:
             # it's a non-word error
@@ -417,7 +392,7 @@ def sentence_spelling_correction(test_data_line):
 
     for word_i, word in enumerate(sentence):  # for each word in the original sentence
         if word_i not in non_word_index_list and n_non_word_error >= n_error:
-            # it's correct
+            # it's a correct word
             result_sentence = result_sentence + word + " "
             continue
 
@@ -465,7 +440,7 @@ def sentence_spelling_correction(test_data_line):
             prob_dict[item] = channel * bigram * math.pow(10, 9)
         prob_dict = sorted(prob_dict, key=prob_dict.get, reverse=True)
         if not prob_dict:  # if P == []
-            prob_dict.append(word)
+            prob_dict.append(word_cleaned)
         result_sentence = result_sentence + str(prob_dict[0]) + word_suffix + " "
 
     # After the model calculates the corrected sentence, the evaluation procedure needs to match the results
@@ -475,6 +450,11 @@ def sentence_spelling_correction(test_data_line):
     result_set = set(nltk.word_tokenize(result_sentence))
     print("[INFO] result set: " + str(result_set))
     print("[INFO] answer set: " + str(ans_set))
+
+    # write the result sentence to a file
+    with open(result_file_path, 'a') as result_file:
+        print(str(sentence_id) + "\t" + result_sentence, file=result_file)
+
     if ans_set == result_set:
         return 1
     else:

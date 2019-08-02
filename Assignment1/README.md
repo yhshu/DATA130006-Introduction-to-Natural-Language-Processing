@@ -58,7 +58,7 @@ https://norvig.com/spell-correct.html)
 
 ## 4. ngram 语言模型
 
-使用拉普拉斯平滑的 ngram 极大似然估计，参考：
+使用加一平滑的 ngram 极大似然估计，参考：
 - http://lintool.github.io/UMD-courses/CMSC723-2009-Fall/session9-slides.pdf
 
 ## 5. 编辑距离
