@@ -36,7 +36,7 @@ must be non-word errors. The rest of the words appear in the vocabulary,
 which may be real word errors or correct words.
 
 The algorithms involved in this project are mainly the noisy-channel
-model and the language model.
+model and the n-gram language model. 
 
 \section{Algorithm}
 
@@ -47,7 +47,7 @@ is as follows.
 
 1) Preprocess. The program downloads nltk Reuters corpus and count the corpus for n-gram. In the program, preprocessing involves loading the confusion matrix and vocabulary from external files.
 
-
+2) Error statistics and positioning. The number and location of non-word errors are determined for each sentence based on the number of sentence errors and the vocabulary provided by the test data. If the number of incorrect words in a sentence is equal to the number of non-word errors judged by the program, then we can assume that all other words except these non-word errors are correct. Otherwise, if the number of incorrect words in the sentence is greater than the number of non-word errors determined by the program, the program also needs to handle the real word error.
 
 3) Noisy channel model. In this model, the goal is to find the intended word given a word where the letters have been scrambled in some manner.
 Given an alphabet $\Sigma$, let $\Sigma^{*}$ be the set of all finite strings over $\Sigma$. Let the dictionary $D$ of valid words be some subset of $\Sigma^{*}$, i.e., $D\subseteq\Sigma^{*}$. The noisy channel is the matrix $\varGamma_{ws}=P(s|w)$,

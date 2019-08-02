@@ -410,6 +410,61 @@ class SpellingCorrector:
         return word, suffix
 
 
+def word_spelling_correction(word_i, word, non_word_index_list, n_non_word_error, n_error, result_sentence, sentence):
+    if word_i not in non_word_index_list and n_non_word_error >= n_error:
+        # it's a correct word
+        result_sentence[word_i] = word
+        return
+
+    # it's non-word error or real word error
+    word_cleaned, word_suffix = spelling_corrector.word_clean(word)
+    word_candidates = spelling_corrector.get_candidates(word_cleaned)
+    # get a candidate set for the word
+    if word_cleaned in word_candidates or legal_number(word_cleaned):
+        result_sentence[word_i] = word
+        return
+
+    channel_dict = dict()
+    prob_dict = dict()
+
+    for candidate_item in word_candidates:
+
+        edit = spelling_corrector.edit_type(candidate_item, word_cleaned)
+
+        if edit is None:
+            continue
+        if edit[0] == EDIT_TYPE_INSERTION:
+            channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[3][0], str2=edit[3][1],
+                                                                            edit_type=EDIT_TYPE_INSERTION)
+        if edit[0] == EDIT_TYPE_DELETION:
+            channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[4][0], str2=edit[4][1],
+                                                                            edit_type=EDIT_TYPE_DELETION)
+        if edit[0] == EDIT_TYPE_TRANSPOSITION:
+            channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[4][0], str2=edit[4][1],
+                                                                            edit_type=EDIT_TYPE_TRANSPOSITION)
+        if edit[0] == EDIT_TYPE_SUBSTITUTION:
+            channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[3], str2=edit[4],
+                                                                            edit_type=EDIT_TYPE_SUBSTITUTION)
+
+    for channel_word in channel_dict:
+        channel = channel_dict[channel_word]
+        if len(sentence) - 1 != word_i:  # not the end of this sentence
+            sentence_prob = spelling_corrector.sentence_probability(
+                sentence=sentence[word_i - 1] + " " + channel_word + " " + sentence[word_i + 1],
+                ngram_type=ngram)
+        else:  # the end of this sentence
+            sentence_prob = spelling_corrector.sentence_probability(
+                sentence=sentence[word_i - 1] + " " + channel_word,
+                ngram_type=ngram)
+
+        bigram = math.pow(math.e, sentence_prob)
+        prob_dict[channel_word] = channel * bigram * math.pow(10, 9)
+    prob_dict = sorted(prob_dict, key=prob_dict.get, reverse=True)
+    if not prob_dict:  # if P == []
+        prob_dict.append(word_cleaned)
+    result_sentence[word_i] = str(prob_dict[0]) + word_suffix
+
+
 def sentence_spelling_correction(test_data_line):
     """
     Generate a corrected sentence for a sentence in the test data.
@@ -423,7 +478,7 @@ def sentence_spelling_correction(test_data_line):
     sentence = sentence.split(" ")  # split words in one sentence
     sentence = spelling_corrector.word_list_clean(sentence)
 
-    result_sentence = ""  # The sentence after the correction
+    result_sentence = [""] * len(sentence)  # The sentence after the correction
 
     # First, we determine the number of non-word errors by comparing the vocabulary.
     # If the number of errors is still greater than 0 except non-word errors, we begin to correct real word errors
@@ -440,59 +495,18 @@ def sentence_spelling_correction(test_data_line):
           ", non-word error: " + str(n_non_word_error))
     print("[INFO] original sentence: " + str(sentence))
 
-    for word_i, word in enumerate(sentence):  # for each word in the original sentence
-        if word_i not in non_word_index_list and n_non_word_error >= n_error:
-            # it's a correct word
-            result_sentence = result_sentence + word + " "
-            continue
+    # for each word in the original sentence
+    for word_i, word in enumerate(sentence):
+        if word_i in non_word_index_list:
+            word_spelling_correction(word_i, word, non_word_index_list,
+                                     n_non_word_error, n_error, result_sentence, sentence)
 
-        # it's non-word error or real word error
-        word_cleaned, word_suffix = spelling_corrector.word_clean(word)
-        word_candidates = spelling_corrector.get_candidates(word_cleaned)  # get a candidate set for the word
-        if word_cleaned in word_candidates or legal_number(word_cleaned):
-            result_sentence = result_sentence + word + ' '
-            continue
+    for word_i, word in enumerate(sentence):
+        if word_i not in non_word_index_list:
+            word_spelling_correction(word_i, word, non_word_index_list,
+                                     n_non_word_error, n_error, result_sentence, sentence)
 
-        channel_dict = dict()
-        prob_dict = dict()
-
-        for candidate_item in word_candidates:
-
-            edit = spelling_corrector.edit_type(candidate_item, word_cleaned)
-
-            if edit is None:
-                continue
-            if edit[0] == EDIT_TYPE_INSERTION:
-                channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[3][0], str2=edit[3][1],
-                                                                                edit_type=EDIT_TYPE_INSERTION)
-            if edit[0] == EDIT_TYPE_DELETION:
-                channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[4][0], str2=edit[4][1],
-                                                                                edit_type=EDIT_TYPE_DELETION)
-            if edit[0] == EDIT_TYPE_TRANSPOSITION:
-                channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[4][0], str2=edit[4][1],
-                                                                                edit_type=EDIT_TYPE_TRANSPOSITION)
-            if edit[0] == EDIT_TYPE_SUBSTITUTION:
-                channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[3], str2=edit[4],
-                                                                                edit_type=EDIT_TYPE_SUBSTITUTION)
-
-        for channel_word in channel_dict:
-            channel = channel_dict[channel_word]
-            if len(sentence) - 1 != word_i:  # not the end of this sentence
-                sentence_prob = spelling_corrector.sentence_probability(
-                    sentence=sentence[word_i - 1] + " " + channel_word + " " + sentence[word_i + 1],
-                    ngram_type=ngram)
-            else:  # the end of this sentence
-                sentence_prob = spelling_corrector.sentence_probability(
-                    sentence=sentence[word_i - 1] + " " + channel_word,
-                    ngram_type=ngram)
-
-            bigram = math.pow(math.e, sentence_prob)
-            prob_dict[channel_word] = channel * bigram * math.pow(10, 9)
-        prob_dict = sorted(prob_dict, key=prob_dict.get, reverse=True)
-        if not prob_dict:  # if P == []
-            prob_dict.append(word_cleaned)
-        result_sentence = result_sentence + str(prob_dict[0]) + word_suffix + " "
-
+    result_sentence = " ".join(result_sentence)
     # After the model calculates the corrected sentence, the evaluation procedure needs to match the results
     ans_sentence = ans_file.readline().split("\t")[1]
 
