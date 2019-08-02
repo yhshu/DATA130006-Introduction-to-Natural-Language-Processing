@@ -1,7 +1,15 @@
+%% LyX 2.3.3 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass{article}
+\usepackage[latin9]{inputenc}
+\usepackage{amsmath}
+\usepackage[authoryear]{natbib}
+
+\makeatletter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
 %! Author = Yiheng Shu
 %! Date = 2019-08-01
 
-\documentclass{article}
 \usepackage{authblk}
 % \usepackage[UTF8]{ctex}
 
@@ -10,78 +18,151 @@
 \affil[*]{Software College, Northeastern University, China}
 \date{July 2019}
 
-\usepackage{natbib}
 \usepackage{graphicx}
 
+\makeatother
+
 \begin{document}
+\maketitle
 
-    \maketitle
+\section{Introduction}
 
-    \section{Introduction}\label{sec:introduction}
-    This report is for \textit{Homework 1: Spelling Correction} of \textit{DATA130006: Introduction to Natural Language Processing}.
+\label{sec:introduction} This report is for \textit{Homework 1: Spelling
+Correction} of \textit{DATA130006: Introduction to Natural Language
+Processing}.
 
-    The project attempted to correct the spelling of a piece of English news text.
-    The types of spelling errors are mainly divided into \textbf{non-word errors} and \textbf{real word errors}.
+The project attempted to correct the spelling of a piece of English
+news text. The types of spelling errors are mainly divided into \textbf{non-word
+errors} and \textbf{real word errors}.
 
-    For non-word errors, the words that need to be checked are compared to all words in the vocabulary, and words that are not in the vocabulary must be non-word errors.
-    The rest of the words appear in the vocabulary, which may be real word errors or correct words.
+For non-word errors, the words that need to be checked are compared
+to all words in the vocabulary, and words that are not in the vocabulary
+must be non-word errors. The rest of the words appear in the vocabulary,
+which may be real word errors or correct words.
 
-    The algorithms involved in this project are mainly the noisy-channel model and the language model.
+The algorithms involved in this project are mainly the noisy-channel
+model and the language model.
 
-    \section{Algorithm Flow}
-    \label{sec:algorithm-flow}
+\section{Algorithm}
 
-    From the perspective of code implementation, the flow of program execution is as follows.
+\label{sec:algorithm}
 
-    1) Preprocess.
-    The program downloads nltk Reuters corpus and count the corpus for n-gram.
-    In the program, preprocessing involves loading the confusion matrix and vocabulary from an external files.
+From the perspective of code implementation, the flow of program execution
+is as follows.
 
-    2) Noisy channel model.
+1) Preprocess. The program downloads nltk Reuters corpus and count
+the corpus for n-gram. In the program, preprocessing involves loading
+the confusion matrix and vocabulary from an external files.
 
-    3) N-gram language model. Considering both the model effect and the computational performance, the program uses the Bigram model, which is a form of n = 2 in the n-gram model. Bigrams help provide the conditional probability of a token given the preceding token, when the relation of the conditional probability is applied:
-    $$
-    P(W_n | W_{n-1}) = \frac{P(W_{n-1}, W_n)}{P(W_{n-1})}
-    $$
+2) Noisy channel model. In this model, the goal is to find the intended
+word given a word where the letters have been scrambled in some manner.
+Given an alphabet $\Sigma$, let $\Sigma^{*}$ be the set of all finite
+strings over $\Sigma$. Let the dictionary $D$ of valid words be
+some subset of $\Sigma^{*}$, i.e., $D\subseteq\Sigma^{*}$. The noisy
+channel is the matrix
 
-    \section{Implementation Details}
-    \label{sec:implementation-details}
+$\varGamma_{ws}=P(s|w)$,
 
-    In the process of algorithm implementation, there are some details that need to be considered.
-    These problems may not be considered in the design of the algorithm, but they occur during program debugging.
+where $\omega\in D$ is the intended word and $s\in\Sigma^{*}$ is
+the scrambled word that was actually received.
 
-    \subsection{The Integrity of Vocabulary}
-    \label{subsec:the-integrity-of-vocabulary}
+3) N-gram language model. Considering both the model effect and the
+computational performance, the program uses the Bigram model, which
+is a form of n = 2 in the n-gram model. Bigrams help provide the conditional
+probability of a token given the preceding token, when the relation
+of the conditional probability is applied: 
+\[
+P(W_{n}|W_{n-1})=\frac{P(W_{n-1},W_{n})}{P(W_{n-1})}
+\]
 
-    The first is the integrity of the thesaurus given by the title.
-    For checking for non-word errors, the larger the lexicon, the better.
-    The lexicon given by the title has a total of more than 48,000 lines.
-    Excluding the repetition of uppercase and lowercase words, it actually contains more than 20,000 common words.
 
-    In natural language, vocabulary does not always appear as a root.
-    Nouns may be plural, and verbs may be in the form of third-person singular forms, past participles, and present participles.
-    Each word may be followed by punctuation marks such as commas, periods, and question marks, as well as suffixes required for grammars such as tenses and possessives.
+\section{Implementation Details}
 
-    The given vocabulary includes nouns with capitalized initials, nouns in plural, and third-person singular forms of verbs.
-    When the program judges a non-word error, it first removes the suffix of the word and converts it into the form contained in the vocabulary.
+\label{sec:implementation-details}
 
-    Some common words are not included in the vocabulary, such as \textit{won't}, \textit{don't} and \textit{can't}, so they are manually added to the vocabulary.
-    
-    \subsection{Confusion Matrix}
-    \label{subsec:confusion-matrix}
-    
-    A confusion matrix is a specific table layout that allows visualization of the performance of an algorithm, typically a supervised learning one.
-    This program directly uses the confusion matrix provided by \cite{kernighan1990spelling}.
-    The four confusion matrices are (1) del[x,y], the number of times that the characters xy (in the correct word) were typed as x in the training set, (2), add[x,y], the number of times that x was typed as xy, (3) sub[x,y], the number of times that y was typed as x, and (4) rev[x,y], the number of times that xy was typed as yx.
+In the process of algorithm implementation, there are some details
+that need to be considered. These problems may not be considered in
+the design of the algorithm, but they occur during program debugging.
 
-    \subsection{Edit Distance Implementation}
-    \label{subsec:edit-distance-implementation}
+\subsection{The Integrity of Vocabulary}
 
-    In this task, the Damerau Levenshtein distance is used to calculate the minimum number of operations for a word to be modified to another word.
-    The types of operations include insertion, deletion, single-character substitution, and transposition of two adjacent characters.
-    After discovering that the edit distance calculation function directly implemented in Python (without speeding up tools such as numpy) is inefficient, the program uses \textit{pyxDamerauLevenshtein} package of PyPI to calculate the edit distance.
-    It implements algorithm for Python in Cython for high performance, and it runs in $O(N*M)$ time using $O(M)$ space.
+\label{subsec:the-integrity-of-vocabulary}
 
+The first is the integrity of the thesaurus given by the title. For
+checking for non-word errors, the larger the lexicon, the better.
+The lexicon given by the title has a total of more than 48,000 lines.
+Excluding the repetition of uppercase and lowercase words, it actually
+contains more than 20,000 common words.
+
+In natural language, vocabulary does not always appear as a root.
+Nouns may be plural, and verbs may be in the form of third-person
+singular forms, past participles, and present participles. Each word
+may be followed by punctuation marks such as commas, periods, and
+question marks, as well as suffixes required for grammars such as
+tenses and possessives.
+
+The given vocabulary includes nouns with capitalized initials, nouns
+in plural, and third-person singular forms of verbs. When the program
+judges a non-word error, it first removes the suffix of the word and
+converts it into the form contained in the vocabulary. After finding
+the word with the highest probability in the vocabulary, the separated
+suffix is added to the end of this corrected word.
+
+Some common words are not included in the vocabulary, such as \textit{won't},
+\textit{don't} and \textit{can't}, so they are manually added to the
+vocabulary.
+
+\subsection{Confusion Matrix}
+
+\label{subsec:confusion-matrix}
+
+A confusion matrix is a specific table layout that allows visualization
+of the performance of an algorithm, typically a supervised learning
+one. This program directly uses the confusion matrix provided by \citet{kernighan1990spelling}.
+The four confusion matrices are (1) del{[}x,y{]}, the number of times
+that the characters xy (in the correct word) were typed as x in the
+training set, (2), add{[}x,y{]}, the number of times that x was typed
+as xy, (3) sub{[}x,y{]}, the number of times that y was typed as x,
+and (4) rev{[}x,y{]}, the number of times that xy was typed as yx.
+
+\subsection{Edit Distance Implementation}
+
+\label{subsec:edit-distance-implementation}
+
+In this task, the Damerau Levenshtein distance is used to calculate
+the minimum number of operations for a word to be modified to another
+word. The types of operations include insertion, deletion, single-character
+substitution, and transposition of two adjacent characters. After
+discovering that the edit distance calculation function directly implemented
+in Python (without speeding up tools such as numpy) is inefficient,
+the program uses \textit{pyxDamerauLevenshtein} package of PyPI to
+calculate the edit distance. It implements algorithm for Python in
+Cython for high performance, and it runs in $O(N*M)$ time using $O(M)$
+space.
+
+\section{Experiments}
+
+\subsection{Experiment Setup}
+
+In summary, the test data used in this experiment contains a thousand
+sentences selected from the news text, mainly containing non-word
+errors and containing a small number of real word errors.
+
+The corpus used in this experiment is the Reuters news corpus provided
+by \textit{nltk} package. In addition to the Reuters corpus, the Gutenberg
+and the Brown corpus was also tried, but was found to be ineffective
+in improving the model effectiveness.
+
+\subsection{Experiment Result}
+
+In 1000 sentences, if the error type is not distinguished, the total
+correction accuracy is about 62.00\%. Detailed results can be found
+in the output file attached to the source code repository. The program
+execution takes only a few minutes. For most sentences, the correction
+is instantaneous, and the longer sentence correction will not exceed
+several seconds.
+
+The GitHub repository address of this task is .
 
 \bibliographystyle{plain}
 \bibliography{references}
