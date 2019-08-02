@@ -7,9 +7,9 @@ from pyxdameraulevenshtein import damerau_levenshtein_distance
 from Assignment1.corpus import load_reuters_corpus, load_gutenberg_corpus, load_brown_corpus
 from util import rchop, lchop, legal_number
 
-
 # THE CONSTANTS
 suffix_list = ["'", "'d", "'flight", "'ll", "'re", "'s", "'ve"]
+ngram = 2  # integer value, 1: unigram, 2: bigram, 3: trigram
 
 # file path
 test_data_path = "testdata.txt"
@@ -43,6 +43,13 @@ class SpellingCorrector:
     five_gram = {}
 
     def __init__(self):
+        """
+        initialize the spelling corrector
+        1. load the corpus provided by nltk package
+        2. count the n-gram
+        3. load the confusion matrix from files, it's for the noisy channel model
+        4. load the vocabulary
+        """
         self.word_list.extend(self.load_corpus("reuters"))
         self.corpus = " ".join(self.word_list)  # use spaces to join all the elements in the list
         # load the corpus to create the word list
@@ -53,6 +60,11 @@ class SpellingCorrector:
         self.load_vocabulary()  # read the vocabulary from a file
 
     def load_corpus(self, corpus_name):
+        """
+        load the corpus
+        :param corpus_name: the name of corpus provideed by nltk package
+        :return: the corpus information
+        """
         if corpus_name == "reuters":
             return load_reuters_corpus()
         if corpus_name == "gutenberg":
@@ -213,28 +225,44 @@ class SpellingCorrector:
         :param str1: string 1
         :param str2: string 2
         :param edit_type: the edit type including insertion, deletion, substitution and transposition
-        :return:
+        :return: Noisy channel probability
         """
         string = str1.lower() + str2.lower()
-        if edit_type == EDIT_TYPE_INSERTION:
-            if str1 == "@":
-                if self.corpus.count(" " + str2) == 0:
+        str1_count = self.corpus.count(str1)
+        string_count = self.corpus.count(string)
+
+        try:
+            if edit_type == EDIT_TYPE_INSERTION:
+                if str1 == "@":
+                    if self.corpus.count(" " + str2) == 0:
+                        return 0
+                    return self.add_mat[string] / self.corpus.count(" " + str2)
+                else:
+                    if str1_count == 0:
+                        return 0
+                    return self.add_mat[string] / str1_count
+            if edit_type == EDIT_TYPE_DELETION:
+                if string_count == 0:
                     return 0
-                return self.add_mat[string] / self.corpus.count(" " + str2)
-            else:
-                if self.corpus.count(str1) == 0:
+                return self.del_mat[string] / string_count
+            if edit_type == EDIT_TYPE_SUBSTITUTION:
+                if str1_count == 0:
                     return 0
-                return self.add_mat[string] / self.corpus.count(str1)
-        if self.corpus.count(string) == 0:
+                return self.sub_mat[string] / str1_count
+            if edit_type == EDIT_TYPE_TRANSPOSITION:
+                if string_count == 0:
+                    return 0
+                return self.rev_mat[string] / string_count
+        except KeyError:
             return 0
-        if edit_type == EDIT_TYPE_DELETION:
-            return self.del_mat[string] / self.corpus.count(string)
-        if edit_type == EDIT_TYPE_SUBSTITUTION:
-            return self.sub_mat[string] / self.corpus.count(string)
-        if edit_type == EDIT_TYPE_TRANSPOSITION:
-            return self.rev_mat[string] / self.corpus.count(string)
+        except ZeroDivisionError:
+            return 0
 
     def count_ngrams(self):
+        """
+        Calculate the number of occurrences of a phrase in the corpus for n-gram models
+        :return: several dict for n-gram models
+        """
         self.unigram = self.count_unigram(self.word_list)
         self.bigram = self.count_bigram(self.word_list)
         # self.trigram = self.count_trigram(self.word_list)
@@ -278,38 +306,50 @@ class SpellingCorrector:
                 word_list[i + 4])
         return Counter(five_gram)
 
-    def n_gram_MLE(self, word, words, gram_type=1):
+    def n_gram_MLE(self, given_words, predicted_words, gram_type=1):
         """
         Calculate the Maximum Likelihood Probability of n-grams with add-one smoothing
 
         Reference:
         - http://lintool.github.io/UMD-courses/CMSC723-2009-Fall/session9-slides.pdf
         """
-
-        if gram_type == 1:
-            return math.log((self.unigram[word] + 1) / (len(self.word_list) + len(self.unigram)))
-        elif gram_type == 2:
-            return math.log(self.bigram[words] + 1) / (self.unigram[word] + len(self.unigram))
-        elif gram_type == 3:
-            return math.log(self.trigram[words] + 1) / (self.bigram[word] + len(self.unigram))
-        elif gram_type == 4:
-            return math.log(self.four_gram[words] + 1) / (self.trigram[word] + len(self.unigram))
-        elif gram_type == 5:
-            return math.log(self.five_gram[words] + 1) / (self.four_gram[word] + len(self.unigram))
+        try:
+            if gram_type == 1:
+                return math.log((self.unigram[given_words] + 1) / (len(self.word_list) + len(self.unigram)))
+            elif gram_type == 2:
+                return math.log((self.bigram[predicted_words] + 1) / (self.unigram[given_words] + len(self.unigram)))
+            elif gram_type == 3:
+                return math.log(self.trigram[predicted_words] + 1) / (self.bigram[given_words] + len(self.unigram))
+            elif gram_type == 4:
+                return math.log(self.four_gram[predicted_words] + 1) / (self.trigram[given_words] + len(self.unigram))
+            elif gram_type == 5:
+                return math.log(self.five_gram[predicted_words] + 1) / (self.four_gram[given_words] + len(self.unigram))
+        except ZeroDivisionError:
+            return 0
+        except KeyError:
+            return 0
 
     def sentence_probability(self, sentence, ngram_type=1):
+        """
+        The ngram model is for phrases rather than entire sentences.
+        For a sentence, we need to calculate the sum of the probabilities on the language model in all words.
+        :param sentence: sentence requiring a probability
+        :param ngram_type: integer 1: unigram; 2: bigram; 3: trigram
+        :return: The sentence probability calculated based on the maximum likelihood estimation
+                 of all words in the sentence in the LM.
+        """
         sentence_word_list = sentence.lower().split()
         prob = 0  # sentence probability
         if ngram_type == 1:
             for i in range(len(sentence_word_list)):
-                prob = prob + self.sentence_probability(sentence_word_list[i])
+                prob = prob + self.n_gram_MLE(sentence_word_list[i], gram_type=1)
 
         if ngram_type == 2:
             for i in range(len(sentence_word_list)):
                 if i >= len(sentence_word_list) - 1:
                     break
                 prob = prob + self.n_gram_MLE(sentence_word_list[i],
-                                              sentence_word_list[i] + " " + sentence_word_list[i + 1], 2)
+                                              sentence_word_list[i] + ' ' + sentence_word_list[i + 1], gram_type=2)
 
         if ngram_type == 3:
             for i in range(len(sentence_word_list)):
@@ -317,7 +357,7 @@ class SpellingCorrector:
                     break
                 prob = prob + self.n_gram_MLE(sentence_word_list[i] + ' ' + sentence_word_list[i + 1],
                                               sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
-                                              sentence_word_list[i + 2], 3)
+                                              sentence_word_list[i + 2], gram_type=3)
 
         if ngram_type == 4:
             for i in range(len(sentence_word_list)):
@@ -326,7 +366,7 @@ class SpellingCorrector:
                 prob = prob + self.n_gram_MLE(sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
                                               sentence_word_list[i + 2],
                                               sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
-                                              sentence_word_list[i + 2] + sentence_word_list[i + 3], 4)
+                                              sentence_word_list[i + 2] + sentence_word_list[i + 3], gram_type=4)
 
         if ngram_type == 5:
             for i in range(len(sentence_word_list)):
@@ -336,7 +376,7 @@ class SpellingCorrector:
                                               sentence_word_list[i + 2] + sentence_word_list[i + 3],
                                               sentence_word_list[i] + ' ' + sentence_word_list[i + 1] + ' ' +
                                               sentence_word_list[i + 2] + sentence_word_list[i + 3] +
-                                              sentence_word_list[i + 4], 5)
+                                              sentence_word_list[i + 4], gram_type=5)
 
         return prob
 
@@ -352,6 +392,11 @@ class SpellingCorrector:
         return word_list
 
     def word_clean(self, word):
+        """
+        Remove the word suffix and find the original form of the word
+        :param word: word to be cleaned
+        :return: a tuple, cleaned word and its suffix
+        """
         word_ori = word
         if word not in self.vocab_list:  # if the word is not in the vocabulary
             word = word.strip(",.!?")  # delete punctuation, such as periods, commas
@@ -366,6 +411,11 @@ class SpellingCorrector:
 
 
 def sentence_spelling_correction(test_data_line):
+    """
+    Generate a corrected sentence for a sentence in the test data.
+    :param test_data_line: a sentence to be corrected
+    :return: Returns 1 if it matches the answer, otherwise returns 0
+    """
     test_data_line = test_data_line.split("\t")  # split the test_data_line according to the metadata
     sentence_id = test_data_line[0]  # sentence id
     n_error = int(test_data_line[1])  # the error number in this sentence
@@ -425,19 +475,19 @@ def sentence_spelling_correction(test_data_line):
                 channel_dict[candidate_item] = spelling_corrector.channel_model(str1=edit[3], str2=edit[4],
                                                                                 edit_type=EDIT_TYPE_SUBSTITUTION)
 
-        for item in channel_dict:
-            channel = channel_dict[item]
+        for channel_word in channel_dict:
+            channel = channel_dict[channel_word]
             if len(sentence) - 1 != word_i:  # not the end of this sentence
-                bigram = math.pow(math.e,
-                                  spelling_corrector.sentence_probability(
-                                      sentence=sentence[word_i - 1] + item + sentence[word_i + 1],
-                                      ngram_type=2))
+                sentence_prob = spelling_corrector.sentence_probability(
+                    sentence=sentence[word_i - 1] + " " + channel_word + " " + sentence[word_i + 1],
+                    ngram_type=ngram)
             else:  # the end of this sentence
-                bigram = math.pow(math.e,
-                                  spelling_corrector.sentence_probability(sentence=sentence[word_i - 1],
-                                                                          ngram_type=2))
+                sentence_prob = spelling_corrector.sentence_probability(
+                    sentence=sentence[word_i - 1] + " " + channel_word,
+                    ngram_type=ngram)
 
-            prob_dict[item] = channel * bigram * math.pow(10, 9)
+            bigram = math.pow(math.e, sentence_prob)
+            prob_dict[channel_word] = channel * bigram * math.pow(10, 9)
         prob_dict = sorted(prob_dict, key=prob_dict.get, reverse=True)
         if not prob_dict:  # if P == []
             prob_dict.append(word_cleaned)
@@ -475,7 +525,7 @@ if __name__ == "__main__":
     print("[INFO] Reading the test data...")
     test_data_file = open(test_data_path, 'r')
     test_data_lines = test_data_file.readlines()
-    test_data_file.close()  # don't forget it
+    test_data_file.close()  # don't forget to close it
 
     ans_file = open(ans_file_path, "r")
 
