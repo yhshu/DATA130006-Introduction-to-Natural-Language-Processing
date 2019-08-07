@@ -1,7 +1,7 @@
 import nltk
 from nltk.corpus import gutenberg, reuters, brown
 
-download_needed = True  # default: True, when the corpus is used for the first time, downloading is necessary.
+download_needed = False  # default: True, when the corpus is used for the first time, downloading is necessary.
 
 
 def load_gutenberg_corpus():
